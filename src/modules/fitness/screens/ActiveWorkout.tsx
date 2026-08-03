@@ -86,7 +86,8 @@ export function ActiveWorkout() {
     const entry: SessionExercise = {
       exerciseId,
       restSec: 120,
-      prescribed: [],
+      // one open row so logging can start immediately
+      prescribed: [{ setType: 'working' }],
       sets: [],
     }
     persist({ ...session, exercises: [...session.exercises, entry] })
