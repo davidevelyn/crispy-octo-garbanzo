@@ -13,6 +13,12 @@ export interface BaseRecord {
   profileId: OwnerId
   createdAt: ISODateTime
   updatedAt: ISODateTime
+  /**
+   * Tombstone: deletions are soft so they survive sync merges (a hard delete
+   * would resurrect from the other device). UI filters these; a boot-time
+   * purge hard-deletes tombstones older than 30 days.
+   */
+  deleted?: boolean
 }
 
 export interface Profile extends BaseRecord {

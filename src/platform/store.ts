@@ -13,12 +13,15 @@ interface AppState {
   profiles: Profile[]
   restTimer: RestTimerState | null
   toast: string | null
+  /** bumped after a background sync pulls changes — screens depend on it to refresh */
+  syncTick: number
   setActiveProfile(id: ProfileId): void
   setProfiles(profiles: Profile[]): void
   startRest(totalSec: number, exerciseName: string): void
   clearRest(): void
   showToast(message: string): void
   clearToast(): void
+  bumpSyncTick(): void
 }
 
 export const useApp = create<AppState>((set) => ({
@@ -26,6 +29,7 @@ export const useApp = create<AppState>((set) => ({
   profiles: [],
   restTimer: null,
   toast: null,
+  syncTick: 0,
   setActiveProfile: (id) => set({ activeProfileId: id }),
   setProfiles: (profiles) => set({ profiles }),
   startRest: (totalSec, exerciseName) =>
@@ -33,6 +37,7 @@ export const useApp = create<AppState>((set) => ({
   clearRest: () => set({ restTimer: null }),
   showToast: (toast) => set({ toast }),
   clearToast: () => set({ toast: null }),
+  bumpSyncTick: () => set((s) => ({ syncTick: s.syncTick + 1 })),
 }))
 
 let toastTimeout: ReturnType<typeof setTimeout> | undefined

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import type { ModuleDefinition, ProfileId } from '../../platform/types'
 import { STORES } from '../../platform/schema'
 import { getAll } from '../../platform/db'
+import { useApp } from '../../platform/store'
 import { mergeRecords } from '../../platform/exportImport'
 import { getProgram } from './content/programs'
 import { getActiveProgramState, getActiveSession } from './data'
@@ -17,6 +18,7 @@ import { ProgramSetup } from './screens/ProgramSetup'
 import type { MeasurementEntry, ProgramState, WorkoutSession } from './types'
 
 function FitnessHomeCard({ profileId }: { profileId: ProfileId }) {
+  const syncTick = useApp((s) => s.syncTick)
   const [line, setLine] = useState<{ title: string; sub: string; active: boolean }>({
     title: 'Fitness',
     sub: 'Loading…',
@@ -50,7 +52,7 @@ function FitnessHomeCard({ profileId }: { profileId: ProfileId }) {
     return () => {
       live = false
     }
-  }, [profileId])
+  }, [profileId, syncTick])
 
   return (
     <Link to="/fitness" className={`card ${line.active ? 'now' : ''}`} style={{ display: 'block' }}>

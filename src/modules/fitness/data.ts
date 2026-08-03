@@ -1,4 +1,4 @@
-import { byIndex, del, get, getAll, put } from '../../platform/db'
+import { byIndex, get, getAll, put } from '../../platform/db'
 import { STORES } from '../../platform/schema'
 import { nowIso, uuid } from '../../platform/ids'
 import type { OwnerId, ProfileId } from '../../platform/types'
@@ -38,10 +38,6 @@ export async function saveSession(session: WorkoutSession): Promise<WorkoutSessi
   const next = { ...session, updatedAt: nowIso() }
   await put(STORES.sessions, next)
   return next
-}
-
-export async function deleteSession(id: string): Promise<void> {
-  await del(STORES.sessions, id)
 }
 
 export function newSession(profileId: OwnerId & ProfileId): WorkoutSession {

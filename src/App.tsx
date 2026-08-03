@@ -2,7 +2,8 @@ import { HashRouter, Route, Routes, useLocation, useNavigate } from 'react-route
 import { useEffect } from 'react'
 import { getModules } from './platform/registry'
 import { setLastProfileId } from './platform/profiles'
-import { useApp } from './platform/store'
+import { syncQuietly } from './platform/sync'
+import { useApp, toast } from './platform/store'
 import { Home } from './screens/Home'
 import { Settings } from './screens/Settings'
 import { RestTimerBar } from './modules/fitness/components/RestTimer'
@@ -54,8 +55,33 @@ function Toast() {
   return <div className="toast">{toast}</div>
 }
 
+/** Background sync when the app opens or comes back to the foreground. */
+let lastSyncAttempt = 0
+function useFocusSync() {
+  const bumpSyncTick = useApp((s) => s.bumpSyncTick)
+  useEffect(() => {
+    const attempt = () => {
+      if (Date.now() - lastSyncAttempt < 60_000) return
+      lastSyncAttempt = Date.now()
+      void syncQuietly().then((result) => {
+        if (result && result.pulled > 0) {
+          bumpSyncTick()
+          toast(`Synced — ${result.pulled} new`)
+        }
+      })
+    }
+    attempt()
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') attempt()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [bumpSyncTick])
+}
+
 export default function App() {
   const modules = getModules()
+  useFocusSync()
   return (
     <HashRouter>
       <div className="app">

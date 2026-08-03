@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { BaseRecord, ModuleDefinition, ProfileId } from '../../platform/types'
 import { STORES } from '../../platform/schema'
-import { del, getAll, put } from '../../platform/db'
+import { getAll, put } from '../../platform/db'
 import { mergeRecords } from '../../platform/exportImport'
 import { nowIso, uuid } from '../../platform/ids'
 import { useApp } from '../../platform/store'
+import { notDeleted, softDelete } from '../../platform/tombstones'
 
 export interface HouseTask extends BaseRecord {
   title: string
@@ -15,7 +16,7 @@ export interface HouseTask extends BaseRecord {
 }
 
 async function getTasks(): Promise<HouseTask[]> {
-  const all = await getAll<HouseTask>(STORES.tasks)
+  const all = notDeleted(await getAll<HouseTask>(STORES.tasks))
   return all.sort((a, b) => {
     if (a.done !== b.done) return a.done ? 1 : -1
     return b.createdAt.localeCompare(a.createdAt)
@@ -28,9 +29,10 @@ function TasksScreen() {
   const [tasks, setTasks] = useState<HouseTask[]>([])
   const [title, setTitle] = useState('')
   const [assignee, setAssignee] = useState<ProfileId | 'both'>(activeProfileId)
+  const syncTick = useApp((s) => s.syncTick)
 
   const refresh = () => void getTasks().then(setTasks)
-  useEffect(refresh, [])
+  useEffect(refresh, [syncTick])
 
   const nameOf = (id: ProfileId | 'both') =>
     id === 'both' ? 'Both' : profiles.find((p) => p.profileId === id)?.name ?? id
@@ -64,7 +66,7 @@ function TasksScreen() {
 
   const clearDone = async () => {
     for (const t of tasks.filter((t) => t.done)) {
-      await del(STORES.tasks, t.id)
+      await softDelete(STORES.tasks, t)
     }
     refresh()
   }
@@ -128,12 +130,13 @@ function TasksScreen() {
 }
 
 function TasksHomeCard({ profileId }: { profileId: ProfileId }) {
+  const syncTick = useApp((s) => s.syncTick)
   const [mine, setMine] = useState<number | null>(null)
   useEffect(() => {
     void getTasks().then((tasks) =>
       setMine(tasks.filter((t) => !t.done && (t.assignee === profileId || t.assignee === 'both')).length),
     )
-  }, [profileId])
+  }, [profileId, syncTick])
   return (
     <Link to="/tasks" className="card" style={{ display: 'block' }}>
       <div className="kicker">Tasks</div>

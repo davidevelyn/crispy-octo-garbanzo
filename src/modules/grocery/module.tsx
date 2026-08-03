@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { BaseRecord, ModuleDefinition } from '../../platform/types'
 import { STORES } from '../../platform/schema'
-import { del, getAll, put } from '../../platform/db'
+import { getAll, put } from '../../platform/db'
 import { mergeRecords } from '../../platform/exportImport'
 import { nowIso, uuid } from '../../platform/ids'
+import { useApp } from '../../platform/store'
+import { notDeleted, softDelete } from '../../platform/tombstones'
 
 export interface GroceryItem extends BaseRecord {
   name: string
@@ -13,7 +15,7 @@ export interface GroceryItem extends BaseRecord {
 }
 
 async function getItems(): Promise<GroceryItem[]> {
-  const all = await getAll<GroceryItem>(STORES.grocery)
+  const all = notDeleted(await getAll<GroceryItem>(STORES.grocery))
   return all.sort((a, b) => {
     if (a.checked !== b.checked) return a.checked ? 1 : -1
     return b.createdAt.localeCompare(a.createdAt)
@@ -21,11 +23,12 @@ async function getItems(): Promise<GroceryItem[]> {
 }
 
 function GroceryScreen() {
+  const syncTick = useApp((s) => s.syncTick)
   const [items, setItems] = useState<GroceryItem[]>([])
   const [name, setName] = useState('')
 
   const refresh = () => void getItems().then(setItems)
-  useEffect(refresh, [])
+  useEffect(refresh, [syncTick])
 
   const add = async () => {
     const trimmed = name.trim()
@@ -55,7 +58,7 @@ function GroceryScreen() {
 
   const clearChecked = async () => {
     for (const item of items.filter((i) => i.checked)) {
-      await del(STORES.grocery, item.id)
+      await softDelete(STORES.grocery, item)
     }
     refresh()
   }
@@ -105,10 +108,11 @@ function GroceryScreen() {
 }
 
 function GroceryHomeCard() {
+  const syncTick = useApp((s) => s.syncTick)
   const [openCount, setOpenCount] = useState<number | null>(null)
   useEffect(() => {
     void getItems().then((items) => setOpenCount(items.filter((i) => !i.checked).length))
-  }, [])
+  }, [syncTick])
   return (
     <Link to="/grocery" className="card" style={{ display: 'block' }}>
       <div className="kicker">Grocery</div>

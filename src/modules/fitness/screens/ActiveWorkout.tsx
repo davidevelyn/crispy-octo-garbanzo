@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../../../platform/store'
+import { syncQuietly } from '../../../platform/sync'
 import { BottomSheet } from '../../../components/BottomSheet'
 import { SetRow } from '../components/SetRow'
 import { PlateCalc } from '../components/PlateCalc'
@@ -17,7 +18,6 @@ import {
   getActiveProgramState,
   saveProgramState,
   saveSession,
-  deleteSession,
 } from '../data'
 import type { LoggedSet, ProgressionEvent, SessionExercise, WorkoutSession } from '../types'
 
@@ -126,11 +126,13 @@ export function ActiveWorkout() {
 
     finished = { ...finished, summary: { ...summaryBase, prEvents: events } }
     await saveSession(finished)
+    void syncQuietly() // tonight's session reaches the other device without being asked
     navigate(`/fitness/summary/${finished.id}`, { replace: true })
   }
 
   const discard = async () => {
-    await deleteSession(session.id)
+    // Soft delete: 'discarded' hides it everywhere; the tombstone survives sync.
+    await saveSession({ ...session, status: 'discarded', deleted: true })
     navigate('/fitness', { replace: true })
   }
 

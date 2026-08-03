@@ -35,8 +35,15 @@ Every record shares the base shape:
   profileId: 'david' | 'margs' | 'shared'
   createdAt: string   // ISO 8601
   updatedAt: string   // ISO 8601 — the merge key; bump it when you change a record
+  deleted?: boolean   // tombstone — soft delete so removals survive sync merges
 }
 ```
+
+**Deletions are soft.** To delete a record, set `deleted: true` and bump
+`updatedAt` — never remove it from the document. UI filters tombstones; a
+boot-time purge hard-deletes tombstones older than 30 days (by which point
+every device has synced them). An agent that hard-deletes a record will see it
+resurrected by the next merge.
 
 All weights are stored in **lbs** (kg is a display conversion). All dates are
 ISO 8601 strings. Static content (the exercise library and program
@@ -134,6 +141,26 @@ by stable slug (`exerciseId: "trap-bar-deadlift"`, `programId:
    keeps whichever side is newer.
 4. Never renumber `week`/`day` or invent `slotId`s — they must match the
    program content.
+
+## Device sync (GitHub Gist)
+
+Sync shares one household pool across devices with no dedicated backend. A
+**secret gist** on the couple's GitHub account holds one file,
+`life-os-sync.json`, in exactly the export-document format above.
+
+- Each device stores a fine-grained PAT (Gists permission only) in its local
+  `meta` store. **The token is never part of an export or the gist itself.**
+- `syncNow()` = pull gist → record-level merge into local (newer `updatedAt`
+  wins) → push the merged union back. Every sync converges both sides;
+  tombstones make deletions stick.
+- Triggers: manual (Settings), on app open/focus (when auto-sync is on), and
+  after finishing a workout.
+- **Agents can participate**: reading the gist file gives the same document as
+  an export; writing well-formed records into it (fresh uuid + timestamps, or
+  bumped `updatedAt` on edits) gets them merged into both phones on their next
+  sync. Follow the soft-delete rule above.
+
+Implementation: `src/platform/sync.ts` (transport interface + orchestration).
 
 ## Adding a module (for future layers)
 
